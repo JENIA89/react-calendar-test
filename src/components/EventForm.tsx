@@ -1,25 +1,64 @@
-import React, { FC } from 'react'
-import { Button, DatePicker, Form, Input, Row } from 'antd'
+import React, { FC, useState } from 'react'
+import { Button, DatePicker, Form, Input, Row, Select } from 'antd'
 import { rules } from '../utils/rules';
+import { IUser } from '../models/IUser';
+import { IEvent } from '../models/IEvent';
+import { Moment } from 'moment';
+import { formatDate } from '../utils/date';
+import { useTypedSelector } from '../hooks/useTypedSelector';
 
+interface EventFormProps {
+	guests: IUser[];
+	submit: (event: IEvent)=> void;
+}
 
-const EventForm: FC = () => {
+const EventForm: FC<EventFormProps> = ({guests, submit}) => {
+	const [event, setEvent] = useState<IEvent>({
+		author: '',
+		date: '',
+		guest: '',
+		description: ''
+	} as IEvent)
+
+	const {user} = useTypedSelector(state => state.auth)
+
+	const selectDate = (date: Moment | null) => {
+		if(date) setEvent({...event, date: formatDate(date.toDate())});	
+	}
+
+	const submitForm = () => {
+		submit({...event, author: user.username})	
+	}
+
     return (
-        <Form>
+        <Form onFinish={submitForm}>
 			<Form.Item
                 label="Описание события"
-                name="вdescription"
+                name="description"
                 rules={[rules.required()]}
             >
-                <Input />
+                <Input onChange={e => setEvent({...event, description: e.target.value})} value={event.description}/>
             </Form.Item>
 			<Form.Item
 				label="Дата события"
 				name="date"
+				rules={[rules.required(), rules.isDateAfter('Рельзя создать событие в прошлом')]}
+			>
+				<DatePicker onChange={date => selectDate(date)} />
+			</Form.Item>
+			<Form.Item
+				label="Выберите гостя"
+				name="guest"
 				rules={[rules.required()]}
 			>
-				<DatePicker  />
-			</Form.Item>
+			<Select onChange={(guest: string)=> setEvent({...event, guest})}>
+				{
+					guests.map((guest, i) =>
+						<Select.Option key={i} value={guest.username}>{guest.username}</Select.Option>
+					)
+				}
+			</Select>
+            </Form.Item>
 			<Row justify='end'>
 			<Form.Item>
                 <Button type="primary" htmlType="submit" >
